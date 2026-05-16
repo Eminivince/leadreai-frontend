@@ -324,17 +324,35 @@
   border: 1px solid var(--rule);
   color: var(--ink);
   font-family: var(--font-body), system-ui, sans-serif;
-  font-size: 13.5px;
+  font-size: 16px;
   padding: 10px 14px;
   border-radius: 8px;
   transition: border-color .15s;
   outline: none;
+}
+@media (min-width: 640px) {
+  .ldr-input { font-size: 13.5px; }
 }
 .ldr-input::placeholder { color: var(--ink-4); }
 .ldr-input:hover { border-color: var(--ink-3); }
 .ldr-input:focus {
   border-color: var(--ink);
   box-shadow: none;
+}
+
+/* ── iOS auto-zoom prevention ────────────────────────────
+ * iOS Safari zooms in on focus when a form field's computed
+ * font-size is under 16px. That's a UX disaster — typing a
+ * password becomes a tour of zoom levels. Force 16px on
+ * EVERY form field below the sm: breakpoint (640px). Above
+ * that, per-component Tailwind classes resume control so the
+ * tighter desktop design stays intact. */
+@media (max-width: 639px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 /* ── B2B SaaS animation utilities ──────────────────────────── */
