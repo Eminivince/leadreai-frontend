@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { setAccessToken } from '@/lib/auth';
 import { useAppStore } from '@/store/useAppStore';
+import { AuthNav } from '@/components/auth/AuthNav';
 
 /**
  * SAML SSO landing page (Task #29).
@@ -63,7 +64,9 @@ export default function SsoCompletePage() {
   }, []);
 
   return (
-    <main className="min-h-screen w-full bg-[color:var(--paper)] flex items-center justify-center px-6">
+    <main className="min-h-screen w-full bg-[color:var(--paper)] flex flex-col">
+      <AuthNav />
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-md bg-white border border-[color:var(--rule)] rounded-2xl p-8 text-center">
         <span className="font-mono text-[9.5px] tracking-[0.18em] uppercase text-[color:var(--ink-4)]">
           Authenticating
@@ -86,6 +89,7 @@ export default function SsoCompletePage() {
             style={{ animationDelay: '300ms' }}
           />
         </div>
+      </div>
       </div>
     </main>
   );

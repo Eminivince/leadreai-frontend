@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { setAccessToken } from '@/lib/auth';
 import { useAppStore } from '@/store/useAppStore';
+import { AuthNav } from '@/components/auth/AuthNav';
 import type { ApiResponse, User } from '@leadreai/shared';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
@@ -64,7 +65,9 @@ function MagicLinkVerifyContent() {
   }, []);
 
   return (
-    <main className="min-h-screen w-full bg-[color:var(--paper)] flex items-center justify-center px-6">
+    <main className="min-h-screen w-full bg-[color:var(--paper)] flex flex-col">
+      <AuthNav />
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-md bg-white border border-[color:var(--rule)] rounded-2xl p-8 text-center">
         <span className="font-mono text-[9.5px] tracking-[0.18em] uppercase text-[color:var(--ink-4)]">
           {state === 'working' ? 'Signing you in' : 'Something went wrong'}
@@ -108,6 +111,7 @@ function MagicLinkVerifyContent() {
             </Link>
           </div>
         )}
+      </div>
       </div>
     </main>
   );

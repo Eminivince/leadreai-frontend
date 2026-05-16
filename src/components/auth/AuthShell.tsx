@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { AuthNav } from './AuthNav';
 
 /* ─────────────────────────────────────────────────────────────────
  * AuthShell — sign in / sign up
@@ -531,7 +532,9 @@ export function AuthShell({
  const [accept, setAccept] = useState(false);
 
  return (
-  <main className="min-h-screen bg-[color:var(--paper)] flex flex-col items-center justify-center px-4 py-12 gap-8">
+  <main className="min-h-screen bg-[color:var(--paper)] flex flex-col">
+   <AuthNav />
+   <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 gap-8">
    <div className="w-full max-w-md bg-white border border-[color:var(--rule)] rounded-2xl p-8">
     {/* Logo */}
     <div className="flex justify-center mb-7">
@@ -783,6 +786,7 @@ export function AuthShell({
     <a href="#" className="hover:text-[color:var(--ink-2)] transition-colors">
      Status
     </a>
+   </div>
    </div>
   </main>
  );
