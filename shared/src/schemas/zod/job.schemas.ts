@@ -92,6 +92,12 @@ export const CreateJobSchema = z.object({
   // Optional — API clients can skip the clarify round-trip if they already
   // have a high-confidence query. The wizard UI always provides it.
   clarifications: z.array(ClarificationAnswerSchema).max(8).optional(),
+  /**
+   * When true, the pipeline drops any lead that doesn't end up with at
+   * least one mailbox-verified email after the post-write verification
+   * pass. Defaults false.
+   */
+  verifiedEmailsOnly: z.boolean().default(false),
 });
 
 export type ClarificationQuestionType = z.infer<typeof ClarificationQuestionTypeSchema>;

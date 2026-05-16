@@ -76,7 +76,7 @@ function Compose({
   error,
   initialPrompt,
 }: {
-  onSubmit: (q: string) => Promise<string | null>;
+  onSubmit: (q: string, options: { verifiedEmailsOnly: boolean }) => Promise<string | null>;
   isSubmitting: boolean;
   /** Dim + disable the composer while a clarification round is in flight. */
   isDimmed?: boolean;
@@ -90,6 +90,26 @@ function Compose({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [loadingCopyIdx, setLoadingCopyIdx] = useState(0);
   const [devBusy, setDevBusy] = useState(false);
+  // Verified-emails-only toggle. Persisted to localStorage so agencies
+  // that have decided "always verified" don't have to re-tick every time.
+  // Server default is still OFF so first-time users aren't surprised by
+  // empty result sets — this state only stickies a deliberate choice.
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (window.localStorage.getItem('leadre.verifiedEmailsOnly') === '1') {
+        setVerifiedOnly(true);
+      }
+    } catch { /* private-mode safe */ }
+  }, []);
+  const toggleVerifiedOnly = () => {
+    setVerifiedOnly((prev) => {
+      const next = !prev;
+      try { window.localStorage.setItem('leadre.verifiedEmailsOnly', next ? '1' : '0'); } catch { /* */ }
+      return next;
+    });
+  };
 
   const isInsufficientCredits = error?.startsWith('Insufficient credits') ?? false;
 
@@ -149,7 +169,7 @@ function Compose({
   async function handleSubmit() {
     const trimmed = value.trim();
     if (trimmed.length < 10) return;
-    const jobId = await onSubmit(trimmed);
+    const jobId = await onSubmit(trimmed, { verifiedEmailsOnly: verifiedOnly });
     if (jobId) setValue('');
   }
 
@@ -201,6 +221,39 @@ function Compose({
             rows={3}
             className="block w-full bg-transparent resize-none px-5 pt-5 pb-3 text-[15.5px] md:text-[16.5px] leading-[1.55] text-[color:var(--ink)] placeholder:text-[color:var(--ink-3)] focus:outline-none"
           />
+          {/* Quality-filter row — verified-only switch sits between the
+              textarea body and the run button. Small, mono, inline so it
+              doesn't dominate the composer but stays one tap away. */}
+          <div className="flex items-center gap-2 px-5 pb-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={verifiedOnly}
+              onClick={toggleVerifiedOnly}
+              className={`group inline-flex items-center gap-2 rounded-md px-2 h-7 border transition-colors ${
+                verifiedOnly
+                  ? 'border-[color:var(--success)]/40 bg-[color:var(--success)]/[0.08] text-[color:var(--success)]'
+                  : 'border-[color:var(--rule)] bg-transparent text-[color:var(--ink-3)] hover:text-[color:var(--ink-2)] hover:border-[color:var(--ink-3)]'
+              }`}
+              title={
+                verifiedOnly
+                  ? 'Only return leads with a mailbox-verified email. Click to allow unverified.'
+                  : 'Allow unverified emails. Click to require mailbox-verified only.'
+              }
+            >
+              <span
+                className={`inline-flex items-center w-7 h-3.5 rounded-full transition-colors px-[2px] ${
+                  verifiedOnly ? 'bg-[color:var(--success)] justify-end' : 'bg-[color:var(--rule)] justify-start'
+                }`}
+                aria-hidden="true"
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-white block" />
+              </span>
+              <span className="font-mono text-[10.5px] tracking-[0.06em] uppercase">
+                Verified only
+              </span>
+            </button>
+          </div>
           <div className="flex items-center justify-between gap-3 px-5 pb-4">
             <span className="font-mono text-[10.5px] tabular-nums tracking-[0.04em] text-[color:var(--ink-3)]">
               {value.length === 0
@@ -1469,13 +1522,24 @@ export default function DashboardPage() {
   // separate from `clarifyingQuery` which is only set after questions
   // return — we want the echo even when clarifying isn't done yet.
   const [inFlightQuery, setInFlightQuery] = useState<string>('');
+  // Holds the verifiedEmailsOnly choice across the clarify round-trip.
+  // Set in handleSubmit when the user fires the query; consumed in
+  // handleConfirmClarify when the user confirms the clarifications.
+  const [pendingVerifiedOnly, setPendingVerifiedOnly] = useState<boolean>(false);
 
-  async function createJob(rawQuery: string, clarifications?: ClarificationAnswer[]): Promise<string | null> {
+  async function createJob(
+    rawQuery: string,
+    clarifications?: ClarificationAnswer[],
+    options?: { verifiedEmailsOnly?: boolean },
+  ): Promise<string | null> {
     if (!workspaceId) return null;
     try {
+      const body: Record<string, unknown> = { rawQuery };
+      if (clarifications) body['clarifications'] = clarifications;
+      if (options?.verifiedEmailsOnly) body['verifiedEmailsOnly'] = true;
       const res = await apiFetch<{ success: true; data: { _id: string } }>(
         `/api/v1/workspaces/${workspaceId}/jobs`,
-        { method: 'POST', body: JSON.stringify({ rawQuery, ...(clarifications ? { clarifications } : {}) }) },
+        { method: 'POST', body: JSON.stringify(body) },
       );
       await queryClient.invalidateQueries({ queryKey: ['jobs', workspaceId] });
       await queryClient.invalidateQueries({ queryKey: ['workspace-stats', workspaceId] });
@@ -1491,12 +1555,16 @@ export default function DashboardPage() {
    * already specific enough and returns zero questions, we skip
    * the clarification step entirely and go straight to the job.
    */
-  async function handleSubmit(rawQuery: string): Promise<string | null> {
+  async function handleSubmit(
+    rawQuery: string,
+    options?: { verifiedEmailsOnly: boolean },
+  ): Promise<string | null> {
     if (!workspaceId) return null;
     setIsSubmitting(true);
     setSubmitError(null);
     setRefusal(null);
     setInFlightQuery(rawQuery);
+    setPendingVerifiedOnly(!!options?.verifiedEmailsOnly);
     setClarifyStartedAt(Date.now());
     setPhase('clarifying');
     try {
@@ -1522,7 +1590,9 @@ export default function DashboardPage() {
 
       if (qs.length === 0) {
         // Allowed + no clarifications needed — file the job immediately.
-        const jobId = await createJob(rawQuery);
+        const jobId = await createJob(rawQuery, undefined, {
+          verifiedEmailsOnly: !!options?.verifiedEmailsOnly,
+        });
         setPhase('idle');
         return jobId;
       }
@@ -1584,12 +1654,15 @@ export default function DashboardPage() {
       answer: answers[q.id] ?? (q.type === 'multi' ? [] : ''),
     }));
     try {
-      await createJob(clarifyingQuery, payload);
+      await createJob(clarifyingQuery, payload, {
+        verifiedEmailsOnly: pendingVerifiedOnly,
+      });
       // Reset — the new job will appear in ActiveDispatch via the poll.
       setQuestions([]);
       setAnswers({});
       setClarifyingQuery(null);
       setInitialPrompt(undefined);
+      setPendingVerifiedOnly(false);
       setPhase('idle');
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Could not run that search. Try again.');

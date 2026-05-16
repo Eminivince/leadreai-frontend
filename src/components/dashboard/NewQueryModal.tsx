@@ -346,9 +346,15 @@ function Summary({ onClose, result }: { onClose: () => void; result: { leadsFoun
 }
 
 /* ── Modal ───────────────────────────────────────────────── */
+export interface NewQueryOptions {
+ /** When true, the pipeline drops any lead without a mailbox-verified
+  *  email. Defaults false. Surfaced as a toggle in the composer. */
+ verifiedEmailsOnly: boolean;
+}
+
 interface NewQueryModalProps {
  workspaceId: string;
- onSubmit: (query: string) => Promise<string | null>;
+ onSubmit: (query: string, options: NewQueryOptions) => Promise<string | null>;
  isSubmitting?: boolean;
  error?: string | null;
 }
@@ -360,6 +366,22 @@ export function NewQueryModal({ workspaceId, onSubmit }: NewQueryModalProps) {
  const [tone, setTone] = useState('direct');
  const [goal, setGoal] = useState('demo');
  const [schedule, setSchedule] = useState('once');
+ // Persisted across sessions — agencies that have decided "always verified"
+ // shouldn't have to re-tick it every query. localStorage keeps the bit
+ // local to the browser; the actual server-side default still favours OFF
+ // for new accounts so first-time users aren't surprised by empty results.
+ const [verifiedOnly, setVerifiedOnly] = useState(false);
+ useEffect(() => {
+  if (typeof window === 'undefined') return;
+  try {
+   const stored = window.localStorage.getItem('leadre.verifiedEmailsOnly');
+   if (stored === '1') setVerifiedOnly(true);
+  } catch { /* ignore — privacy mode etc. */ }
+ }, []);
+ const setVerifiedOnlyPersisted = (v: boolean) => {
+  setVerifiedOnly(v);
+  try { window.localStorage.setItem('leadre.verifiedEmailsOnly', v ? '1' : '0'); } catch { /* ignore */ }
+ };
  // eslint-disable-next-line @typescript-eslint/no-unused-vars
  const [_blocklist] = useState('existing-crm');
  const taRef = useRef<HTMLTextAreaElement>(null);
@@ -403,7 +425,7 @@ export function NewQueryModal({ workspaceId, onSubmit }: NewQueryModalProps) {
   setJobId(null);
   setPhase('running');
   try {
-   const id = await onSubmit(prompt);
+   const id = await onSubmit(prompt, { verifiedEmailsOnly: verifiedOnly });
    if (id) {
     setJobId(id);
     setActiveJob(id, prompt);
@@ -506,6 +528,42 @@ export function NewQueryModal({ workspaceId, onSubmit }: NewQueryModalProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
          <Segmented label="Outreach tone" value={tone} onChange={setTone} options={TONES}/>
          <Segmented label="Primary goal"  value={goal} onChange={setGoal} options={GOALS}/>
+        </div>
+
+        {/* Quality filter — verified emails only */}
+        <div>
+         <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-white/50 mb-2 whitespace-nowrap">Quality filter</div>
+         <button
+          type="button"
+          role="switch"
+          aria-checked={verifiedOnly}
+          onClick={() => setVerifiedOnlyPersisted(!verifiedOnly)}
+          className={[
+           'w-full text-left flex items-center gap-3 rounded-xl border px-3.5 py-3 transition',
+           verifiedOnly
+            ? 'border-emerald-400/40 bg-emerald-400/[0.06]'
+            : 'border-white/10 bg-[color:var(--paper)]/[0.025] hover:border-white/25',
+          ].join(' ')}
+         >
+          <span
+           className={[
+            'shrink-0 inline-flex items-center w-9 h-5 rounded-full transition px-[2px]',
+            verifiedOnly ? 'bg-emerald-400 justify-end' : 'bg-white/15 justify-start',
+           ].join(' ')}
+           aria-hidden="true"
+          >
+           <span className="w-4 h-4 rounded-full bg-white block" />
+          </span>
+          <span className="flex-1 min-w-0">
+           <span className="block text-[13px] font-body font-medium text-white">
+            Verified emails only
+           </span>
+           <span className="block text-[11.5px] font-body text-white/55 leading-snug">
+            Drop any lead without a mailbox-verified email. Fewer leads, all
+            reachable — safer for sender reputation.
+           </span>
+          </span>
+         </button>
         </div>
 
         {/* Schedule */}
