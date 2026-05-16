@@ -23,6 +23,18 @@ const nextConfig = {
       '.jsx': ['.tsx', '.jsx'],
       '.mjs': ['.mts', '.mjs'],
     };
+    // Silence the known noisy "Critical dependency: the request of a
+    // dependency is an expression" warning emitted by
+    // @opentelemetry/instrumentation (pulled in transitively via
+    // @sentry/nextjs → @sentry/node → @fastify/otel). Sentry works fine;
+    // the warning just adds visual noise to the dev console. Scoping to
+    // these modules so we don't accidentally suppress a real issue
+    // elsewhere.
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      { module: /@opentelemetry\/instrumentation/ },
+      { module: /@sentry\/(node|nextjs)/, message: /Critical dependency/ },
+    ];
     return config;
   },
 };
