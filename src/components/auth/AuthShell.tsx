@@ -531,7 +531,7 @@ export function AuthShell({
  const [accept, setAccept] = useState(false);
 
  return (
-  <main className="min-h-screen bg-[color:var(--paper)] flex items-center justify-center px-4 py-12">
+  <main className="min-h-screen bg-[color:var(--paper)] flex flex-col items-center justify-center px-4 py-12 gap-8">
    <div className="w-full max-w-md bg-white border border-[color:var(--rule)] rounded-2xl p-8">
     {/* Logo */}
     <div className="flex justify-center mb-7">
@@ -767,8 +767,9 @@ export function AuthShell({
     </form>
    </div>
 
-   {/* Footer */}
-   <div className="absolute bottom-5 left-0 right-0 flex items-center justify-center gap-3 font-mono text-[10px] tracking-[0.12em] uppercase text-[color:var(--ink-4)]">
+   {/* Footer — in normal flow, sits below the card. flex-wrap so it
+       reflows cleanly on narrow viewports. */}
+   <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-mono text-[10px] tracking-[0.12em] uppercase text-[color:var(--ink-4)]">
     <span>© 2026 LeadreAI</span>
     <span aria-hidden>·</span>
     <a href="#" className="hover:text-[color:var(--ink-2)] transition-colors">
