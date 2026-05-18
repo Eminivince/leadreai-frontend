@@ -1,5 +1,5 @@
-import AltNav from '@/components/marketing/AltNav'
-import AltFooter from '@/components/marketing/AltFooter'
+import Link from 'next/link';
+import SiteNav from '@/components/marketing/SiteNav';
 
 const PRICING_TIERS = [
   {
@@ -9,7 +9,7 @@ const PRICING_TIERS = [
     tagline: 'For solo prospectors getting started.',
     features: ['Up to 50 contacts/month', 'Email + phone enrichment', 'CSV export', 'Email support'],
     cta: 'Get started free',
-    ctaHref: '/auth/register',
+    ctaHref: '/register',
     highlighted: false,
   },
   {
@@ -25,7 +25,7 @@ const PRICING_TIERS = [
       'Live chat support',
     ],
     cta: 'Start free trial',
-    ctaHref: '/auth/register',
+    ctaHref: '/register',
     highlighted: true,
   },
   {
@@ -42,7 +42,7 @@ const PRICING_TIERS = [
     ],
     cta: 'Contact sales',
     // TODO: replace with dedicated sales/demo booking page when available
-    ctaHref: '/contact',
+    ctaHref: 'mailto:hello@leadreai.app?subject=Enterprise%20plan',
     highlighted: false,
   },
 ]
@@ -83,7 +83,7 @@ function Check() {
 export default function PricingPage() {
   return (
     <main className="bg-[color:var(--paper)] text-[color:var(--ink)] min-h-screen">
-      <AltNav />
+      <SiteNav />
 
       {/* Hero */}
       <section className="px-4 sm:px-6 pt-12 sm:pt-20 pb-12 text-center">
@@ -190,7 +190,45 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <AltFooter />
+      <PricingFooter />
     </main>
   )
+}
+
+function PricingFooter() {
+  return (
+    <footer className="px-4 sm:px-6 md:px-12 py-10 flex items-center justify-between gap-6 flex-wrap border-t border-[color:var(--rule)]">
+      <div className="flex items-center gap-2.5">
+        <div className="w-6 h-6 rounded-md bg-[color:var(--ink)] flex items-center justify-center flex-shrink-0">
+          <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5" aria-hidden="true">
+            <path d="M3 13 L3 3 L6 3 L6 10 L13 10 L13 13 Z" fill="white" />
+            <circle cx="12" cy="4" r="1.8" fill="rgba(255,255,255,0.5)" />
+          </svg>
+        </div>
+        <span className="font-sans font-bold text-[13px] text-[color:var(--ink)] tracking-[-0.02em]">
+          LeadreAI
+        </span>
+        <span className="font-mono text-[9.5px] text-[color:var(--ink-4)] tracking-[0.18em] uppercase ml-3">
+          © {new Date().getFullYear()} — built for thin markets
+        </span>
+      </div>
+      <div className="flex items-center gap-6 flex-wrap">
+        <Link href="/docs" className="font-sans text-[12.5px] text-[color:var(--ink-3)] hover:text-[color:var(--ink)] transition-colors">
+          Docs
+        </Link>
+        <Link href="/terms" className="font-sans text-[12.5px] text-[color:var(--ink-3)] hover:text-[color:var(--ink)] transition-colors">
+          Terms
+        </Link>
+        <Link href="/privacy" className="font-sans text-[12.5px] text-[color:var(--ink-3)] hover:text-[color:var(--ink)] transition-colors">
+          Privacy
+        </Link>
+        <Link href="/login" className="font-sans text-[12.5px] text-[color:var(--ink-3)] hover:text-[color:var(--ink)] transition-colors">
+          Sign in
+        </Link>
+        <Link href="/register" className="font-sans text-[12.5px] font-medium text-[color:var(--ink-2)] hover:text-[color:var(--ink)] transition-colors">
+          Start for free →
+        </Link>
+      </div>
+    </footer>
+  );
 }

@@ -355,6 +355,25 @@
   }
 }
 
+/* ── Dark-mode surface adjustment ───────────────────────────
+ * Many components use `bg-white` as a card surface — fine on
+ * the cream paper in light mode, but a bright white card on
+ * a warm-dark page is glaring. Re-bind `bg-white` in dark mode
+ * to --paper-2 (the warm raised-surface token), so the white
+ * cards become dark warm cards automatically.
+ *
+ * Same for input fields that use `bg-white` directly — they
+ * need to be dark too in dark mode. */
+.dark .bg-white,
+.dark input.bg-white,
+.dark textarea.bg-white,
+.dark select.bg-white {
+  background-color: var(--paper-2) !important;
+}
+.dark .text-black {
+  color: var(--ink) !important;
+}
+
 /* ── B2B SaaS animation utilities ──────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(10px); }
