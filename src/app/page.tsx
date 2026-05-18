@@ -427,7 +427,7 @@ function SiteFooter() {
         </span>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-x-5 gap-y-2 flex-wrap">
         <Link
           href="/pricing"
           className="font-sans text-[12.5px] text-[color:var(--ink-3)] hover:text-[color:var(--ink)] transition-colors"
@@ -439,6 +439,24 @@ function SiteFooter() {
           className="font-sans text-[12.5px] text-[color:var(--ink-3)] hover:text-[color:var(--ink)] transition-colors"
         >
           Docs
+        </Link>
+        <Link
+          href="/terms"
+          className="font-sans text-[12.5px] text-[color:var(--ink-3)] hover:text-[color:var(--ink)] transition-colors"
+        >
+          Terms
+        </Link>
+        <Link
+          href="/privacy"
+          className="font-sans text-[12.5px] text-[color:var(--ink-3)] hover:text-[color:var(--ink)] transition-colors"
+        >
+          Privacy
+        </Link>
+        <Link
+          href="/security"
+          className="font-sans text-[12.5px] text-[color:var(--ink-3)] hover:text-[color:var(--ink)] transition-colors"
+        >
+          Security
         </Link>
         <Link
           href="/login"

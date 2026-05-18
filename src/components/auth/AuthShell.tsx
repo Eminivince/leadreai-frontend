@@ -773,19 +773,19 @@ export function AuthShell({
    {/* Footer — in normal flow, sits below the card. flex-wrap so it
        reflows cleanly on narrow viewports. */}
    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-mono text-[10px] tracking-[0.12em] uppercase text-[color:var(--ink-4)]">
-    <span>© 2026 LeadreAI</span>
+    <span>© {new Date().getFullYear()} LeadreAI</span>
     <span aria-hidden>·</span>
-    <a href="#" className="hover:text-[color:var(--ink-2)] transition-colors">
+    <Link href="/privacy" className="hover:text-[color:var(--ink-2)] transition-colors">
      Privacy
-    </a>
+    </Link>
     <span aria-hidden>·</span>
-    <a href="#" className="hover:text-[color:var(--ink-2)] transition-colors">
+    <Link href="/terms" className="hover:text-[color:var(--ink-2)] transition-colors">
      Terms
-    </a>
+    </Link>
     <span aria-hidden>·</span>
-    <a href="#" className="hover:text-[color:var(--ink-2)] transition-colors">
-     Status
-    </a>
+    <Link href="/security" className="hover:text-[color:var(--ink-2)] transition-colors">
+     Security
+    </Link>
    </div>
    </div>
   </main>
