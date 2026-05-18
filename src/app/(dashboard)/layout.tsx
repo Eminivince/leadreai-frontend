@@ -28,22 +28,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
  if (isLoading) {
   return (
-   <div className="min-h-screen flex items-center justify-center bg-[color:var(--paper)]">
+   <div className="h-screen flex items-center justify-center bg-[color:var(--paper)]">
     <LoadingSpinner size={28} />
    </div>
   );
  }
 
+ /*
+  * Scroll-containment architecture.
+  *
+  * Outer shell is locked to viewport height (h-screen) with overflow
+  * hidden — the document NEVER grows past the viewport. The sidebar
+  * and topbar sit at fixed positions inside that locked box. The only
+  * thing that scrolls is the content area (overflow-y-auto on the inner
+  * div) — which means long pages scroll in place without dragging the
+  * sidebar or topbar with them.
+  *
+  * Before this change, the shell used min-h-screen which lets the
+  * document grow with content. On long pages, that produced two bugs:
+  *   1. the sidebar (h-screen sticky) stuck to viewport top but visually
+  *      "felt tall" because the document underneath was tall
+  *   2. the browser scrollbar appeared on the document, scrolling the
+  *      whole app instead of just the content area.
+  */
  return (
-  <div className="flex min-h-screen w-full bg-[color:var(--paper)] text-[color:var(--ink)] selection:bg-[color:var(--ember)] selection:text-white flex-col overflow-x-hidden">
+  <div className="h-screen flex flex-col w-full bg-[color:var(--paper)] text-[color:var(--ink)] selection:bg-[color:var(--ember)] selection:text-white overflow-hidden">
    <ImpersonationBanner />
    <div className="flex flex-1 min-h-0 w-full">
    <Sidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
-   <main className="flex-1 min-w-0 flex flex-col overflow-x-hidden">
-    <div className="sticky top-0 z-20 bg-[color:var(--paper)]/95 backdrop-blur-sm border-b border-[color:var(--rule)]">
+   <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+    <div className="shrink-0 bg-[color:var(--paper)]/95 backdrop-blur-sm border-b border-[color:var(--rule)]">
      <Topbar onOpenMobileSidebar={() => setMobileOpen(true)} />
     </div>
-    <div className="flex-1 relative bg-[color:var(--paper-2)] min-w-0">{children}</div>
+    <div className="flex-1 relative bg-[color:var(--paper-2)] min-w-0 overflow-y-auto overflow-x-hidden">{children}</div>
    </main>
    </div>
    <TopUpModal />
