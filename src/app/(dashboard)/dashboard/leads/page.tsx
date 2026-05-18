@@ -1137,24 +1137,34 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {/* Floating bulk-action bar */}
+      {/* Floating bulk-action bar.
+       * Mobile (<sm): anchored to bottom edges with inset-x-3, allowed to
+       *               wrap if buttons don't fit. Compact labels.
+       * sm and up:    original centered floating pill with full labels.
+       *
+       * The previous "fixed bottom-6 left-1/2 -translate-x-1/2" pattern
+       * worked fine on desktop but on a 375px phone the bar's contents
+       * (~440px) exceeded the viewport so the rightmost buttons
+       * ("Suppress" / close) were clipped off the screen edge. */}
       {selCount > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-up">
-          <div className="flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-4 py-3 rounded-xl shadow-2xl border border-[color:var(--paper)]/10">
-            <span className="text-[13px] font-semibold tabular-nums whitespace-nowrap">
-              {selCount} selected
+        <div className="fixed inset-x-3 bottom-3 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 z-50 animate-fade-up">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap bg-[color:var(--ink)] text-[color:var(--paper)] px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl shadow-2xl border border-[color:var(--paper)]/10">
+            <span className="text-[12.5px] sm:text-[13px] font-semibold tabular-nums whitespace-nowrap">
+              {selCount}
+              <span className="hidden sm:inline"> selected</span>
+              <span className="sm:hidden ml-1 text-[color:var(--paper)]/70">selected</span>
             </span>
-            <div className="w-px h-5 bg-[color:var(--paper)]/20" />
+            <div className="w-px h-5 bg-[color:var(--paper)]/20 hidden sm:block" />
 
             <div ref={saveMenuRef} className="relative">
               <button
                 onClick={() => setSaveMenuOpen((v) => !v)}
-                className="flex items-center gap-1.5 text-[12.5px] font-medium text-[color:var(--paper)]/80 hover:text-[color:var(--paper)] transition"
+                className="flex items-center gap-1.5 text-[12.5px] font-medium text-[color:var(--paper)]/80 hover:text-[color:var(--paper)] transition whitespace-nowrap"
               >
                 Save to file ▾
               </button>
               {saveMenuOpen && (
-                <div className="absolute bottom-full left-0 mb-2 z-20 w-[320px] bg-[color:var(--paper)] border border-[color:var(--rule)] rounded-lg shadow-2xl overflow-hidden">
+                <div className="absolute bottom-full left-0 mb-2 z-20 w-[min(320px,calc(100vw-1.5rem))] bg-[color:var(--paper)] border border-[color:var(--rule)] rounded-lg shadow-2xl overflow-hidden">
                   <div className="px-3 py-2 border-b border-[color:var(--rule)]">
                     <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-[color:var(--ink-3)]">
                       Add to file
@@ -1220,9 +1230,9 @@ export default function LeadsPage() {
 
             <button
               onClick={handleExport}
-              className="flex items-center gap-1.5 text-[12.5px] font-medium text-[color:var(--paper)]/80 hover:text-[color:var(--paper)] transition"
+              className="flex items-center gap-1.5 text-[12.5px] font-medium text-[color:var(--paper)]/80 hover:text-[color:var(--paper)] transition whitespace-nowrap"
             >
-              Export CSV
+              Export <span className="hidden sm:inline">CSV</span>
             </button>
 
             {/* Bulk suppress (Task #27) — adds every selected lead's
@@ -1232,15 +1242,15 @@ export default function LeadsPage() {
                 automatically re-engage a paused sequence. */}
             <button
               onClick={() => setSuppressOpen(true)}
-              className="flex items-center gap-1.5 text-[12.5px] font-medium text-[color:var(--paper)]/80 hover:text-[color:var(--paper)] transition"
+              className="flex items-center gap-1.5 text-[12.5px] font-medium text-[color:var(--paper)]/80 hover:text-[color:var(--paper)] transition whitespace-nowrap"
             >
               Suppress
             </button>
 
-            <div className="w-px h-5 bg-[color:var(--paper)]/20" />
+            <div className="w-px h-5 bg-[color:var(--paper)]/20 hidden sm:block" />
             <button
               onClick={() => setSelected(new Set())}
-              className="p-1 text-[color:var(--paper)]/50 hover:text-[color:var(--paper)] transition rounded"
+              className="ml-auto sm:ml-0 p-1 text-[color:var(--paper)]/50 hover:text-[color:var(--paper)] transition rounded"
               aria-label="Clear selection"
             >
               <CloseIcon className="w-3 h-3" />
