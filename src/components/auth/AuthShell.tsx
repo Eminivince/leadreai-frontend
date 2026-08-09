@@ -84,7 +84,7 @@ function Wordmark() {
 }
 
 function GoogleButton({ isSignup }: { isSignup: boolean }) {
- const href = `${API_BASE}/api/v1/auth/google?returnTo=${encodeURIComponent('/dashboard')}`;
+ const href = `/api/v1/auth/google?returnTo=${encodeURIComponent('/dashboard')}`;
  return (
   <a href={href} className={OUTLINE_BTN}>
    <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden>
