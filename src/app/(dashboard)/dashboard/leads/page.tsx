@@ -13,6 +13,8 @@ import { PageHelp } from '@/components/ui/PageHelp';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Pagination } from '@/components/shared/Pagination';
 import { SectionTabs } from '@/components/shared/SectionTabs';
+import { QueryTaskActions } from '@/components/prospecting/QueryTaskActions';
+import { QueryTaskState } from '@/components/prospecting/QueryTaskState';
 
 const GROUPS_PAGE_SIZE = 20;
 
@@ -147,6 +149,16 @@ function StatusChip({ status }: { status: string }) {
     qualified: { label: 'Qualified', tone: 'bg-[color:var(--success)]/10 text-[color:var(--success)]' },
     pending:   { label: 'New',       tone: 'bg-[color:var(--ember-bg)] text-[color:var(--ember)]' },
     dust:      { label: 'Rejected',  tone: 'bg-[color:var(--paper-2)] text-[color:var(--ink-3)]' },
+    queued: { label: 'Queued', tone: 'bg-[color:var(--paper-2)] text-[color:var(--ink-2)]' },
+    parsing: { label: 'Starting', tone: 'bg-[color:var(--ember-bg)] text-[color:var(--ember)]' },
+    collecting: { label: 'Searching', tone: 'bg-[color:var(--ember-bg)] text-[color:var(--ember)]' },
+    enriching: { label: 'Enriching', tone: 'bg-[color:var(--ember-bg)] text-[color:var(--ember)]' },
+    deduplicating: { label: 'Finishing', tone: 'bg-[color:var(--ember-bg)] text-[color:var(--ember)]' },
+    retrying: { label: 'Retrying', tone: 'bg-[color:var(--warn)]/10 text-[color:var(--warn)]' },
+    cancelling: { label: 'Stopping', tone: 'bg-[color:var(--warn)]/10 text-[color:var(--warn)]' },
+    complete: { label: 'Complete', tone: 'bg-[color:var(--success)]/10 text-[color:var(--success)]' },
+    failed: { label: 'Failed', tone: 'bg-[color:var(--warn)]/10 text-[color:var(--warn)]' },
+    cancelled: { label: 'Cancelled', tone: 'bg-[color:var(--paper-2)] text-[color:var(--ink-3)]' },
   };
   const chip = map[status] ?? map.pending!;
   return (
@@ -166,6 +178,7 @@ function ScorePill({ v }: { v: number }) {
 
 /* ── Dossier header (when viewing ?jobId=X) ─────────────────── */
 function DossierHeader({ job }: { job: ProspectingJob }) {
+  const qc = useQueryClient();
   const schema = job.parsedIntent?.outputSchema ?? [];
   const dossierId = job._id.slice(-4).toUpperCase();
   const isLive = job.status !== 'complete' && job.status !== 'failed' && job.status !== 'cancelled';
@@ -223,6 +236,17 @@ function DossierHeader({ job }: { job: ProspectingJob }) {
             {job.rawQuery}
           </p>
 
+          <QueryTaskState job={job} />
+          <div className="mt-4">
+            <QueryTaskActions
+              job={job}
+              onChanged={() => {
+                void qc.invalidateQueries({ queryKey: ['job'] });
+                void qc.invalidateQueries({ queryKey: ['jobs-list'] });
+              }}
+            />
+          </div>
+
           <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 pt-5 border-t border-[color:var(--rule)]">
             <div>
               <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-[color:var(--ink-3)]">
@@ -260,6 +284,13 @@ function DossierHeader({ job }: { job: ProspectingJob }) {
               </div>
             </div>
           </div>
+
+          {job.status === 'complete' && (job.result?.totalLeadsFound ?? 0) === 0 && (
+            <div className="mt-4 border border-[color:var(--rule)] bg-[color:var(--paper-2)]/60 px-3 py-2.5 text-[13px] text-[color:var(--ink)]">
+              <span className="font-medium">No matching leads found.</span>
+              <span className="ml-1 text-[color:var(--ink-2)]">Edit this query to broaden the search.</span>
+            </div>
+          )}
 
           {schema.length > 0 && (
             <div className="mt-5 pt-5 border-t border-[color:var(--rule)] flex flex-wrap gap-1.5">
@@ -901,6 +932,7 @@ export default function LeadsPage() {
     queryFn: () =>
       apiFetch<ApiResponse<ProspectingJob>>(`/api/v1/workspaces/${workspaceId}/jobs/${jobId}`),
     enabled: !!workspaceId && !!jobId,
+    refetchInterval: jobId ? 6_000 : false,
   });
 
   // Fetch all jobs so we can show the rawQuery label per group in archive mode

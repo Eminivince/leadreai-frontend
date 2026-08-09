@@ -4,6 +4,8 @@ export const JOB_STATUSES = [
   'collecting',
   'enriching',
   'deduplicating',
+  'retrying',
+  'cancelling',
   'complete',
   'failed',
   'cancelled',

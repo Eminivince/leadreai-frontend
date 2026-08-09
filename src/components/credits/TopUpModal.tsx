@@ -41,8 +41,8 @@ interface TopUpInitResponse {
 }
 
 interface VerifyResponse {
-  success: true;
-  data: { credits?: number; packageId?: string; already_processed?: boolean };
+ success: true;
+  data: { credits?: number; packageId?: string; already_processed?: boolean; processing?: boolean };
 }
 
 function loadPaystackScript(): Promise<void> {
@@ -144,12 +144,16 @@ export function TopUpModal() {
         accessCode,
         onSuccess: async (transaction) => {
           try {
-            await apiFetch<VerifyResponse>(
+            const verify = await apiFetch<VerifyResponse>(
               '/api/v1/credits/paystack/verify',
               { method: 'POST', body: JSON.stringify({ reference: transaction.reference }) },
             );
             await qc.invalidateQueries({ queryKey: ['credits'] });
-            toast.success('Credits added — you\'re all set.');
+            if (verify.data.processing) {
+              toast.message('Payment confirmed. Credit grant is still processing.');
+            } else {
+              toast.success('Credits added.');
+            }
             closeTopUp();
           } catch {
             toast.error('Payment received but credit grant failed — please contact support.');

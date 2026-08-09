@@ -35,6 +35,28 @@ interface TxnPage {
   limit: number;
 }
 
+interface PaystackPayment {
+  _id: string;
+  reference: string;
+  type: 'topup' | 'subscription';
+  status: 'waiting_for_payment' | 'confirming_payment' | 'credits_added' | 'subscription_active' | 'needs_support';
+  packageId?: string;
+  planId?: string;
+  error?: string;
+  createdAt: string;
+}
+
+function paymentStatusLabel(status: PaystackPayment['status']): string {
+  const labels: Record<PaystackPayment['status'], string> = {
+    waiting_for_payment: 'Waiting for payment',
+    confirming_payment: 'Confirming payment',
+    credits_added: 'Credits added',
+    subscription_active: 'Subscription active',
+    needs_support: 'Needs support',
+  };
+  return labels[status];
+}
+
 function fmtDate(iso?: string): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-US', {
@@ -110,14 +132,16 @@ function PaymentReturnHandler() {
     const paystack = params.get('paystack');
 
     if (stripe === 'subscribed' || paystack === 'subscribed') {
-      toast.success('Subscription activated. Your monthly credits will refresh shortly.');
+      toast.message('Payment received. We are confirming your subscription.');
       void qc.invalidateQueries({ queryKey: ['credits'] });
       void qc.invalidateQueries({ queryKey: ['credit-transactions'] });
+      void qc.invalidateQueries({ queryKey: ['paystack-payments'] });
       router.replace('/dashboard/settings/billing');
     } else if (stripe === 'topped_up' || paystack === 'topped_up') {
-      toast.success('Top-up complete. Credits have been added to your account.');
+      toast.message('Payment received. We are confirming your credit grant.');
       void qc.invalidateQueries({ queryKey: ['credits'] });
       void qc.invalidateQueries({ queryKey: ['credit-transactions'] });
+      void qc.invalidateQueries({ queryKey: ['paystack-payments'] });
       router.replace('/dashboard/settings/billing');
     } else if (stripe === 'cancelled') {
       toast.info('Checkout cancelled. No charge was made.');
@@ -139,6 +163,12 @@ export default function BillingSettingsPage() {
       apiFetch<{ success: true; data: TxnPage }>('/api/v1/credits/transactions?limit=30'),
   });
   const txns = txnsRes?.data?.data ?? [];
+  const { data: paymentsRes } = useQuery({
+    queryKey: ['paystack-payments'],
+    queryFn: () => apiFetch<{ success: true; data: PaystackPayment[] }>('/api/v1/credits/paystack/payments'),
+    refetchInterval: 8_000,
+  });
+  const payments = paymentsRes?.data ?? [];
 
   const plan = credits?.plan ?? 'free';
   const cfg = planConfig(plan);
@@ -277,10 +307,39 @@ export default function BillingSettingsPage() {
         </div>
       </section>
 
+      <section>
+        <SectionHead n="03" title="Payment activity" />
+        {payments.length === 0 ? (
+          <p className="text-[13px] text-[color:var(--ink-2)]">No Paystack payments yet.</p>
+        ) : (
+          <div className="border-t border-[color:var(--rule)]">
+            {payments.slice(0, 5).map((payment) => (
+              <div key={payment._id} className="grid grid-cols-[1fr_auto] gap-3 py-3 border-b border-[color:var(--rule)]/70">
+                <div className="min-w-0">
+                  <p className="text-[13px] text-[color:var(--ink)]">
+                    {payment.type === 'topup' ? 'Paystack top-up' : 'Paystack subscription'}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[10px] text-[color:var(--ink-3)] truncate">
+                    {payment.reference}
+                  </p>
+                  {payment.error && <p className="mt-1 text-[12px] text-[color:var(--warn)]">{payment.error}</p>}
+                </div>
+                <div className="text-right">
+                  <p className="text-[12px] text-[color:var(--ink-2)]">{paymentStatusLabel(payment.status)}</p>
+                  <p className="mt-0.5 font-mono text-[10px] text-[color:var(--ink-3)]">
+                    {new Date(payment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Ledger */}
       <section>
         <SectionHead
-          n="03"
+          n="04"
           title={
             <>
               Ledger{' '}
@@ -366,13 +425,13 @@ export default function BillingSettingsPage() {
 
       {/* Budget (Task #15 / #23 frontend) */}
       <section>
-        <SectionHead n="04" title="Monthly budget" />
+        <SectionHead n="05" title="Monthly budget" />
         <BudgetPanel />
       </section>
 
       {/* Usage */}
       <section>
-        <SectionHead n="05" title="Usage" />
+        <SectionHead n="06" title="Usage" />
         <UsageSection />
       </section>
     </div>

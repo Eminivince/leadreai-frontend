@@ -4,6 +4,8 @@ export type JobStatus =
   | 'collecting'
   | 'enriching'
   | 'deduplicating'
+  | 'retrying'
+  | 'cancelling'
   | 'complete'
   | 'failed'
   | 'cancelled';
@@ -94,6 +96,15 @@ export interface ProspectingJob {
   activityLog?: JobActivityLogEntry[];
   bullmqJobId?: string;
   creditsCharged: number;
+  creditsRefunded: number;
+  creditsRefundedAt?: string;
+  cancellationRequestedAt?: string;
+  cancelledAt?: string;
+  lastProgressAt?: string;
+  retryAttempt?: number;
+  retryMaxAttempts?: number;
+  archivedAt?: string;
+  deletedAt?: string;
   startedAt?: string;
   completedAt?: string;
   createdAt: string;

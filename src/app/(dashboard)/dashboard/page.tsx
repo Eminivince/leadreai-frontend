@@ -9,6 +9,8 @@ import { useJob } from '@/hooks/useJob';
 import { apiFetch } from '@/lib/api';
 import { useAppStore } from '@/store/useAppStore';
 import { PageHelp } from '@/components/ui/PageHelp';
+import { QueryTaskActions } from '@/components/prospecting/QueryTaskActions';
+import { QueryTaskState } from '@/components/prospecting/QueryTaskState';
 import type {
   ApiResponse,
   ProspectingJob,
@@ -820,6 +822,8 @@ function StatusChip({ status }: { status: ProspectingJob['status'] }) {
     collecting:    { label: 'Collecting',    color: 'text-[color:var(--ember)] bg-[color:var(--paper-3)]' },
     enriching:     { label: 'Enriching',     color: 'text-[color:var(--ember)] bg-[color:var(--paper-3)]' },
     deduplicating: { label: 'Finalizing',    color: 'text-[color:var(--ember)] bg-[color:var(--paper-3)]' },
+    retrying:      { label: 'Retrying',      color: 'text-[color:var(--warn)] bg-[color:var(--paper-3)]' },
+    cancelling:    { label: 'Stopping',      color: 'text-[color:var(--warn)] bg-[color:var(--paper-3)]' },
     complete:      { label: 'Complete',      color: 'text-[color:var(--ember)] bg-[color:var(--paper-3)]' },
     failed:        { label: 'Failed',        color: 'text-[color:var(--warn)] bg-[color:var(--paper-3)]' },
     cancelled:     { label: 'Cancelled',     color: 'text-[color:var(--ink-2)] bg-[color:var(--paper-2)]' },
@@ -944,7 +948,9 @@ function AuditTrail({ job }: { job: ProspectingJob }) {
     job.status === 'parsing' ||
     job.status === 'collecting' ||
     job.status === 'enriching' ||
-    job.status === 'deduplicating';
+    job.status === 'deduplicating' ||
+    job.status === 'retrying' ||
+    job.status === 'cancelling';
 
   // Live SSE feed while active; fall back to the frozen Mongo log once
   // the job is terminal so the section remains useful retrospectively.
@@ -1168,7 +1174,22 @@ function AuditEntry({ entry }: { entry: JobActivityLogEntry }) {
 }
 
 /* ── Active Dispatch (most recent running/recent job) ──────── */
-function ActiveDispatch({ job }: { job: ProspectingJob }) {
+function ActiveDispatch({ job: originalJob }: { job: ProspectingJob }) {
+  const { workspaceId } = useWorkspace();
+  const queryClient = useQueryClient();
+  const initiallyLive = originalJob.status !== 'complete' && originalJob.status !== 'failed' && originalJob.status !== 'cancelled';
+  const live = useJob(initiallyLive ? workspaceId : null, initiallyLive ? originalJob._id : null, () => {
+    void queryClient.invalidateQueries({ queryKey: ['jobs', workspaceId] });
+  });
+  const job: ProspectingJob = {
+    ...originalJob,
+    status: (live.status as ProspectingJob['status'] | null) ?? originalJob.status,
+    progress: {
+      ...originalJob.progress,
+      percentage: live.percentage ?? originalJob.progress?.percentage ?? 0,
+      currentStage: live.stage ?? originalJob.progress?.currentStage ?? '',
+    },
+  };
   const pct = job.progress?.percentage ?? 0;
   const stage = job.progress?.currentStage ?? 'pending';
   const found = job.progress?.leadsFoundSoFar ?? 0;
@@ -1218,6 +1239,36 @@ function ActiveDispatch({ job }: { job: ProspectingJob }) {
           <p className="text-[15px] md:text-[16.5px] leading-[1.55] text-[color:var(--ink)] font-medium">
             {job.rawQuery}
           </p>
+
+          <QueryTaskState job={job} connection={live.connection} />
+
+          <div className="mt-4">
+            <QueryTaskActions
+              job={job}
+              onChanged={() => queryClient.invalidateQueries({ queryKey: ['jobs', workspaceId] })}
+            />
+          </div>
+
+          {job.status === 'failed' && (
+            <div
+              role="alert"
+              className="mt-4 border border-red-500/35 bg-red-500/[0.07] px-3 py-2.5 text-[13px] leading-[1.45] text-[color:var(--ink)]"
+            >
+              <p className="font-medium">{job.error?.message ?? 'This search did not complete.'}</p>
+              {job.creditsRefunded > 0 && (
+                <p className="mt-1 text-[color:var(--ink-2)]">
+                  {job.creditsRefunded} credit{job.creditsRefunded === 1 ? '' : 's'} returned.
+                </p>
+              )}
+            </div>
+          )}
+
+          {job.status === 'complete' && (job.result?.totalLeadsFound ?? 0) === 0 && (
+            <div className="mt-4 border border-[color:var(--rule)] bg-[color:var(--paper-2)]/60 px-3 py-2.5 text-[13px] leading-[1.45] text-[color:var(--ink)]">
+              <p className="font-medium">No matching leads found.</p>
+              <p className="mt-1 text-[color:var(--ink-2)]">Edit this query to broaden the industry, location, or contact criteria.</p>
+            </div>
+          )}
 
           {/* 3-cell metric row — tabular-nums dominates */}
           <div className="mt-5 grid grid-cols-3 gap-x-6 gap-y-4 pt-5 border-t border-[color:var(--rule)]">
@@ -1312,18 +1363,48 @@ function ActiveDispatch({ job }: { job: ProspectingJob }) {
  * anywhere on the row to drill in. Keeps density high — recent
  * searches are reference material, not the page's hero.
  * ─────────────────────────────────────────────────────────────── */
-function RecentDispatches({ jobs }: { jobs: ProspectingJob[] }) {
-  if (jobs.length === 0) return null;
+function RecentDispatches({
+  jobs,
+  showingArchived,
+  onToggleArchived,
+}: {
+  jobs: ProspectingJob[];
+  showingArchived: boolean;
+  onToggleArchived: () => void;
+}) {
+  if (jobs.length === 0) {
+    return (
+      <section className="flex items-center justify-between gap-3">
+        <span className="font-mono text-[10.5px] tracking-[0.14em] uppercase text-[color:var(--ink-3)]">
+          {showingArchived ? 'No archived searches' : 'No recent searches'}
+        </span>
+        <button
+          type="button"
+          onClick={onToggleArchived}
+          className="font-mono text-[9.5px] tracking-[0.12em] uppercase text-[color:var(--ink-3)] hover:text-[color:var(--ink)]"
+        >
+          {showingArchived ? 'Show active' : 'Show archived'}
+        </button>
+      </section>
+    );
+  }
 
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
-        <span className="font-mono text-[10.5px] tracking-[0.14em] uppercase text-[color:var(--ink-3)]">
-          Recent searches
-        </span>
-        <span className="font-mono text-[10.5px] tabular-nums text-[color:var(--ink-3)]">
-          {jobs.length}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[10.5px] tracking-[0.14em] uppercase text-[color:var(--ink-3)]">
+            {showingArchived ? 'Archived searches' : 'Recent searches'}
+          </span>
+          <button
+            type="button"
+            onClick={onToggleArchived}
+            className="font-mono text-[9.5px] tracking-[0.12em] uppercase text-[color:var(--ink-3)] hover:text-[color:var(--ink)]"
+          >
+            {showingArchived ? 'Show active' : 'Show archived'}
+          </button>
+        </div>
+        <span className="font-mono text-[10.5px] tabular-nums text-[color:var(--ink-3)]">{jobs.length}</span>
       </div>
 
       <div className="rounded-xl border border-[color:var(--rule)] overflow-hidden bg-[color:var(--paper)]">
@@ -1473,6 +1554,8 @@ export default function DashboardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [initialPrompt, setInitialPrompt] = useState<string | undefined>(undefined);
+  const [submissionReceipt, setSubmissionReceipt] = useState<ProspectingJob | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   // If we landed here with ?prefill=..., seed the composer once and
   // scrub the query param so a reload doesn't re-apply it.
@@ -1486,10 +1569,10 @@ export default function DashboardPage() {
   }, []);
 
   const { data: jobsData } = useQuery({
-    queryKey: ['jobs', workspaceId],
+    queryKey: ['jobs', workspaceId, showArchived],
     queryFn: () =>
       apiFetch<ApiResponse<ProspectingJob[]> & { total: number }>(
-        `/api/v1/workspaces/${workspaceId}/jobs?limit=20`,
+        `/api/v1/workspaces/${workspaceId}/jobs?limit=20${showArchived ? '&archived=true' : ''}`,
       ),
     enabled: !!workspaceId,
     refetchInterval: 6_000, // poll while the page is open so live jobs animate
@@ -1497,11 +1580,17 @@ export default function DashboardPage() {
 
   const jobs = useMemo(() => jobsData?.data ?? [], [jobsData]);
 
-  // Split: active = most recent job that isn't terminal-old, recents = older
+  // Keep a running search in focus. If none are running, keep the latest
+  // failed search in focus so a user cannot miss a failed dispatch.
   const { activeJob, recentJobs } = useMemo(() => {
     if (jobs.length === 0) return { activeJob: null, recentJobs: [] };
-    const [head, ...rest] = jobs;
-    return { activeJob: head ?? null, recentJobs: rest.slice(0, 10) };
+    const focused = jobs.find((job) => !['complete', 'failed', 'cancelled'].includes(job.status))
+      ?? jobs.find((job) => job.status === 'failed')
+      ?? jobs[0];
+    return {
+      activeJob: focused ?? null,
+      recentJobs: jobs.filter((job) => job._id !== focused?._id).slice(0, 10),
+    };
   }, [jobs]);
 
   // Clarification step state. When `questions.length > 0`, the compose
@@ -1537,14 +1626,16 @@ export default function DashboardPage() {
       const body: Record<string, unknown> = { rawQuery };
       if (clarifications) body['clarifications'] = clarifications;
       if (options?.verifiedEmailsOnly) body['verifiedEmailsOnly'] = true;
-      const res = await apiFetch<{ success: true; data: { _id: string } }>(
+      const res = await apiFetch<{ success: true; data: ProspectingJob }>(
         `/api/v1/workspaces/${workspaceId}/jobs`,
         { method: 'POST', body: JSON.stringify(body) },
       );
+      setSubmissionReceipt(res.data);
       await queryClient.invalidateQueries({ queryKey: ['jobs', workspaceId] });
       await queryClient.invalidateQueries({ queryKey: ['workspace-stats', workspaceId] });
       return res.data._id;
     } catch (err) {
+      await queryClient.invalidateQueries({ queryKey: ['jobs', workspaceId] });
       throw err instanceof Error ? err : new Error('Could not run that search. Try again.');
     }
   }
@@ -1744,6 +1835,23 @@ export default function DashboardPage() {
           />
         </div>
 
+        {submissionReceipt && (
+          <div className="border border-[color:var(--ember)]/35 bg-[color:var(--ember)]/[0.05] px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <p className="text-[13px] font-medium text-[color:var(--ink)]">Search queued.</p>
+              <p className="mt-0.5 text-[12px] text-[color:var(--ink-2)]">
+                #{submissionReceipt._id.slice(-4).toUpperCase()} · {submissionReceipt.creditsCharged} credit{submissionReceipt.creditsCharged === 1 ? '' : 's'} charged
+              </p>
+            </div>
+            <Link
+              href={`/dashboard/leads?jobId=${submissionReceipt._id}`}
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[color:var(--ink)] hover:text-[color:var(--ember)]"
+            >
+              View task <ArrowEast className="w-3 h-3" />
+            </Link>
+          </div>
+        )}
+
         {showClarifyLoading && (
           <ClarifyLoadingPanel
             query={inFlightQuery}
@@ -1776,7 +1884,11 @@ export default function DashboardPage() {
         </div>
 
         <div className="animate-fade-up stagger-4">
-          <RecentDispatches jobs={recentJobs} />
+          <RecentDispatches
+            jobs={recentJobs}
+            showingArchived={showArchived}
+            onToggleArchived={() => setShowArchived((value) => !value)}
+          />
         </div>
       </div>
     </div>

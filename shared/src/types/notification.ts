@@ -1,6 +1,7 @@
 export const NOTIFICATION_TYPES = [
   'job.complete',
   'job.failed',
+  'job.cancelled',
   'campaign.drafts_complete',
   'campaign.reply',
   'campaign.bounce',
