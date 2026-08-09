@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { GlassCard, Eyebrow, Pill } from './GlassCard';
 import { cn } from '@/lib/utils';
 import type { ProspectingJob } from '@leadreai/shared';
@@ -55,7 +56,7 @@ export function RunningJobs({ jobs, onRetry }: RunningJobsProps) {
 
  return (
   <GlassCard className="p-5">
-   <Eyebrow right={<a href="/dashboard/leads" className="text-[11px] font-body text-white/70 hover:text-white">All jobs →</a>}>
+   <Eyebrow right={<Link href="/dashboard/leads" className="text-[11px] font-body text-white/70 hover:text-white">All jobs →</Link>}>
     Prospecting · running
    </Eyebrow>
    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

@@ -11,12 +11,12 @@ import { useCredits } from '@/hooks/useCredits';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import {
   SectionHead,
-  ForthcomingPanel,
   PrimaryButton,
   GhostButton,
   Label,
   HairlineInput,
 } from '@/components/settings/primitives';
+import { WorkspaceUsageWidget } from '@/components/costs/WorkspaceUsageWidget';
 import { planConfig, type CreditTransaction, type Workspace } from '@leadreai/shared';
 
 /**
@@ -373,14 +373,51 @@ export default function BillingSettingsPage() {
       {/* Usage */}
       <section>
         <SectionHead n="05" title="Usage" />
-        <div className="">
-          <ForthcomingPanel title="Workspace usage metrics.">
-            Searches run, leads collected, exports shipped, and credits consumed per workspace — all
-            tracked server-side but not yet wired to an API. We&rsquo;ll surface a full dashboard on
-            this page and on the upcoming Analytics section.
-          </ForthcomingPanel>
-        </div>
+        <UsageSection />
       </section>
+    </div>
+  );
+}
+
+interface WorkspaceUsage {
+  usageStats?: {
+    totalJobsRun: number;
+    totalLeadsFound: number;
+    totalExports: number;
+    creditsUsed: number;
+  };
+}
+
+/** Lifetime workspace activity counters + the rolling 30-day spend ledger. */
+function UsageSection() {
+  const { workspaceId } = useWorkspace();
+  const { data, isLoading } = useQuery({
+    queryKey: ['workspace-usage-stats', workspaceId],
+    queryFn: () => apiFetch<{ data: WorkspaceUsage }>(`/api/v1/workspaces/${workspaceId}`),
+    enabled: !!workspaceId,
+  });
+
+  const s = data?.data.usageStats;
+  const stats: Array<{ label: string; value: number }> = [
+    { label: 'Searches run', value: s?.totalJobsRun ?? 0 },
+    { label: 'Leads collected', value: s?.totalLeadsFound ?? 0 },
+    { label: 'Exports shipped', value: s?.totalExports ?? 0 },
+    { label: 'Credits used', value: s?.creditsUsed ?? 0 },
+  ];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {stats.map((st) => (
+          <div key={st.label} className="rounded-lg border border-[color:var(--rule)] bg-white px-4 py-3.5">
+            <div className="text-[22px] font-semibold tabular-nums text-[color:var(--ink)]">
+              {isLoading ? '—' : st.value.toLocaleString()}
+            </div>
+            <div className="mt-0.5 text-[12px] text-[color:var(--ink-3)]">{st.label}</div>
+          </div>
+        ))}
+      </div>
+      {workspaceId && <WorkspaceUsageWidget workspaceId={workspaceId} />}
     </div>
   );
 }

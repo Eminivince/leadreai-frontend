@@ -1,9 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Emit a self-contained server bundle (.next/standalone) so the
+  // production Docker image ships only the files actually traced as
+  // needed, instead of the full node_modules tree.
+  output: 'standalone',
   eslint: {
     // ESLint runs in CI separately; not a deploy gate.
     ignoreDuringBuilds: true,
+  },
+  async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${apiUrl}/api/v1/:path*`,
+      },
+    ];
   },
   images: {
     remotePatterns: [

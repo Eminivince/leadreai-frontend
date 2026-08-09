@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { apiFetch } from '@/lib/api';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useAppStore } from '@/store/useAppStore';
 import type { ApiResponse, Workspace } from '@leadreai/shared';
-import { ForthcomingPanel } from '@/components/settings/primitives';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 /**
  * Workspace — name, description, and desk preferences.
@@ -77,6 +79,9 @@ function ToggleRow({
 export default function WorkspaceSettingsPage() {
  const { workspaceId } = useWorkspace();
  const qc = useQueryClient();
+ const router = useRouter();
+ const { setWorkspace } = useAppStore();
+ const [confirmDelete, setConfirmDelete] = useState(false);
 
  const { data, isLoading } = useQuery({
   queryKey: ['workspace', workspaceId],
@@ -119,6 +124,19 @@ export default function WorkspaceSettingsPage() {
    qc.invalidateQueries({ queryKey: ['workspace', workspaceId] });
   },
   onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save.'),
+ });
+
+ const deleteMutation = useMutation({
+  mutationFn: () => apiFetch(`/api/v1/workspaces/${workspaceId}`, { method: 'DELETE' }),
+  onSuccess: () => {
+   toast.success('Workspace deleted.');
+   // Drop the cached workspace so the app re-resolves to another one (or
+   // onboarding) instead of pointing at the deleted id.
+   setWorkspace(null);
+   qc.clear();
+   router.push('/dashboard');
+  },
+  onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete workspace.'),
  });
 
  if (isLoading || !ws) {
@@ -240,12 +258,35 @@ export default function WorkspaceSettingsPage() {
      <p className="text-[13px] text-[color:var(--ink-3)] mt-0.5">Irreversible workspace actions.</p>
     </div>
     <div className="p-4 sm:p-6">
-     <ForthcomingPanel title="Archive or delete this workspace.">
-      Archiving hides the workspace and stops all running searches. Deletion is permanent.
-      Both operations are forthcoming — contact us today if you need either.
-     </ForthcomingPanel>
+     <div className="rounded-lg border border-red-200 bg-red-50/40 p-4 sm:p-5">
+      <h3 className="text-[14px] font-semibold text-[color:var(--ink)]">Delete this workspace</h3>
+      <p className="mt-1 text-[13px] leading-[1.6] text-[color:var(--ink-3)] max-w-[560px]">
+       Permanently removes this workspace and <b>all</b> of its data — leads, contacts,
+       jobs, campaigns, sequences, files, and billing history. Team members lose access.
+       This cannot be undone.
+      </p>
+      <button
+       type="button"
+       onClick={() => setConfirmDelete(true)}
+       className="mt-4 inline-flex items-center justify-center rounded-lg border border-red-300 bg-white px-4 py-2 text-[13px] font-semibold text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors"
+      >
+       Delete workspace…
+      </button>
+     </div>
     </div>
    </div>
+
+   <ConfirmDialog
+    open={confirmDelete}
+    onOpenChange={(o) => { if (!o) setConfirmDelete(false); }}
+    title="Delete workspace permanently"
+    description={`Type the workspace name to confirm. Everything in it will be erased.`}
+    itemName={ws.name}
+    requireText={ws.name}
+    confirmLabel="Delete forever"
+    loading={deleteMutation.isPending}
+    onConfirm={() => deleteMutation.mutate()}
+   />
   </form>
  );
 }

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Keep the authenticated app and API-adjacent routes out of search indexes.
+Disallow: /dashboard
+Disallow: /auth/
+Disallow: /install/

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import type { ApiResponse } from '@leadreai/shared';
@@ -81,6 +82,7 @@ const STORAGE_DISMISSED_KEY = 'onboarding-wizard-dismissed-session';
 
 export function OnboardingWizard(): React.JSX.Element | null {
  const qc = useQueryClient();
+ const pathname = usePathname();
  const [sessionDismissed, setSessionDismissed] = useState(false);
 
  useEffect(() => {
@@ -125,6 +127,11 @@ export function OnboardingWizard(): React.JSX.Element | null {
  const visibleStep =
   STEPS.find((s) => s.key === openStepKey) ?? activeStep;
 
+ // Only surface first-run guidance on the dashboard home. Showing this
+ // modal over sub-pages (Leads, every Settings tab) hijacked the page the
+ // user navigated to — including the very settings pages the wizard's own
+ // CTAs link to. The dashboard is where they return to continue.
+ if (pathname !== '/dashboard') return null;
  if (isLoading || !state) return null;
  if (sessionDismissed) return null;
  if (!state.isNewAccount) return null;

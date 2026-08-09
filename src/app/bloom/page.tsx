@@ -157,7 +157,7 @@ export default function BloomPage() {
                 Visionary Design
               </p>
               <blockquote className="text-sm leading-relaxed text-white/80">
-                "We imagined a realm with{' '}
+                &ldquo;We imagined a realm with{' '}
                 <span
                   style={{
                     fontFamily: SERIF,
@@ -166,7 +166,7 @@ export default function BloomPage() {
                 >
                   no ending.
                 </span>
-                "
+                &rdquo;
               </blockquote>
               <div className="flex items-center justify-center gap-4 mt-3">
                 <span className="flex-1 max-w-16 h-px bg-white/20" />

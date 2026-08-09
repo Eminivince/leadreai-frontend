@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, ApiError } from '@/lib/api';
+import { setAccessToken } from '@/lib/auth';
 import { useAppStore } from '@/store/useAppStore';
 import type { ApiResponse, User } from '@leadreai/shared';
 import {
@@ -11,7 +12,6 @@ import {
   HairlineInput,
   SectionHead,
   PrimaryButton,
-  ForthcomingPanel,
 } from '@/components/settings/primitives';
 
 /**
@@ -146,13 +146,78 @@ export default function AccountSettingsPage() {
       {/* Security */}
       <section>
         <SectionHead n="03" title="Security" />
-        <div className="">
-          <ForthcomingPanel title="Password change and two-factor authentication.">
-            For now, auth uses your initial credentials. If you need a password reset,
-            sign out and use the forgotten-password flow on the sign-in page.
-          </ForthcomingPanel>
-        </div>
+        <SecuritySection />
       </section>
     </div>
+  );
+}
+
+/**
+ * Password change (or first-time set, for social sign-ups). On success the
+ * backend rotates the session and returns a fresh access token, which we
+ * store so the current device stays signed in while every other session is
+ * invalidated.
+ */
+function SecuritySection() {
+  const meQuery = useQuery({
+    queryKey: ['auth-me-haspassword'],
+    queryFn: () => apiFetch<ApiResponse<User & { hasPassword: boolean }>>('/api/v1/auth/me'),
+  });
+  const hasPassword = meQuery.data?.data.hasPassword ?? true;
+
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: (body: { currentPassword?: string; newPassword: string }) =>
+      apiFetch<ApiResponse<{ accessToken: string; wasSet: boolean }>>('/api/v1/auth/me/password', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: ({ data }) => {
+      setAccessToken(data.accessToken); // keep this device signed in
+      setCurrent(''); setNext(''); setConfirm('');
+      void meQuery.refetch();
+      toast.success(data.wasSet ? 'Password set. Other sessions were signed out.' : 'Password changed. Other sessions were signed out.');
+    },
+    onError: (err) => toast.error(err instanceof ApiError || err instanceof Error ? err.message : 'Could not update password.'),
+  });
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (next.length < 8) { toast.error('New password must be at least 8 characters.'); return; }
+    if (next !== confirm) { toast.error('New passwords do not match.'); return; }
+    mutation.mutate({ ...(hasPassword ? { currentPassword: current } : {}), newPassword: next });
+  }
+
+  return (
+    <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {!hasPassword && (
+        <p className="md:col-span-2 text-[12.5px] leading-[1.6] text-[color:var(--ink-2)] bg-[color:var(--paper-2)] rounded-lg px-4 py-3">
+          You signed up with a social provider. Set a password to also be able to sign in with email.
+        </p>
+      )}
+      {hasPassword && (
+        <div className="md:col-span-2">
+          <Label>Current password</Label>
+          <HairlineInput type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
+        </div>
+      )}
+      <div>
+        <Label>{hasPassword ? 'New password' : 'Password'}</Label>
+        <HairlineInput type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} minLength={8} required />
+      </div>
+      <div>
+        <Label>Confirm password</Label>
+        <HairlineInput type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} minLength={8} required />
+      </div>
+      <div className="md:col-span-2 flex items-center justify-between pt-1">
+        <span className="text-[12px] text-[color:var(--ink-3)]">Changing your password signs out all other devices.</span>
+        <PrimaryButton type="submit" disabled={mutation.isPending || !next || !confirm}>
+          {mutation.isPending ? 'Saving…' : hasPassword ? 'Change password' : 'Set password'}
+        </PrimaryButton>
+      </div>
+    </form>
   );
 }
