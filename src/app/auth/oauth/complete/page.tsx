@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { setAccessToken } from '@/lib/auth';
 import { useAppStore } from '@/store/useAppStore';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API_BASE = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 
 function safePath(input: string | null): string {
   if (!input) return '/dashboard';

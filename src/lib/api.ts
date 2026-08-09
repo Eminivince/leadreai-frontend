@@ -1,6 +1,6 @@
 import { getAccessToken, setAccessToken, clearTokens } from './auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API_BASE = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 
 /**
  * `ApiError` carries the upstream status so callers can branch (e.g.
