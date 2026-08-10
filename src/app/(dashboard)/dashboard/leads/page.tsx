@@ -182,10 +182,19 @@ function DossierHeader({ job }: { job: ProspectingJob }) {
   const schema = job.parsedIntent?.outputSchema ?? [];
   const dossierId = job._id.slice(-4).toUpperCase();
   const isLive = job.status !== 'complete' && job.status !== 'failed' && job.status !== 'cancelled';
-  const leadsValue =
+  const targetCount = job.parsedIntent?.targetCount;
+  const rawLeadsValue =
     job.status === 'complete'
       ? (job.result?.totalLeadsFound ?? 0)
       : (job.progress?.leadsFoundSoFar ?? 0);
+  const leadsValue = rawLeadsValue;
+  const deliveredCount = job.result?.totalLeadsFound ?? 0;
+  const candidatesFound = job.result?.candidatesFound ?? deliveredCount;
+  const droppedUnverified = job.result?.droppedUnverified ?? 0;
+  const droppedNoContact = job.result?.droppedNoContact ?? 0;
+  const showDeliveryShortfall = job.status === 'complete'
+    && typeof targetCount === 'number'
+    && deliveredCount < targetCount;
   return (
     <section className="mb-6">
       {/* Breadcrumb — compact mono row, no editorial tracking */}
@@ -250,12 +259,12 @@ function DossierHeader({ job }: { job: ProspectingJob }) {
           <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 pt-5 border-t border-[color:var(--rule)]">
             <div>
               <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-[color:var(--ink-3)]">
-                Leads
+                {isLive ? 'Candidates' : 'Delivered'}
               </span>
               <div className="mt-1 font-mono text-[24px] leading-none tabular-nums text-[color:var(--ink)]">
                 {leadsValue}
                 <span className="text-[12px] text-[color:var(--ink-3)] ml-1">
-                  / {job.parsedIntent?.targetCount ?? '—'}
+                  {isLive ? `checked for ${job.parsedIntent?.targetCount ?? '—'}` : `/ ${job.parsedIntent?.targetCount ?? '—'}`}
                 </span>
               </div>
             </div>
@@ -285,10 +294,21 @@ function DossierHeader({ job }: { job: ProspectingJob }) {
             </div>
           </div>
 
-          {job.status === 'complete' && (job.result?.totalLeadsFound ?? 0) === 0 && (
+          {showDeliveryShortfall && (
             <div className="mt-4 border border-[color:var(--rule)] bg-[color:var(--paper-2)]/60 px-3 py-2.5 text-[13px] text-[color:var(--ink)]">
-              <span className="font-medium">No matching leads found.</span>
-              <span className="ml-1 text-[color:var(--ink-2)]">Edit this query to broaden the search.</span>
+              <p className="font-medium">Delivered {deliveredCount} of {targetCount} requested leads.</p>
+              {droppedUnverified > 0 && (
+                <p className="mt-1 text-[color:var(--ink-2)]">{droppedUnverified} candidate{droppedUnverified === 1 ? '' : 's'} had no verified email.</p>
+              )}
+              {droppedNoContact > 0 && (
+                <p className="mt-1 text-[color:var(--ink-2)]">{droppedNoContact} candidate{droppedNoContact === 1 ? '' : 's'} had no usable email or phone.</p>
+              )}
+              {droppedUnverified === 0 && droppedNoContact === 0 && candidatesFound > deliveredCount && (
+                <p className="mt-1 text-[color:var(--ink-2)]">Some candidates did not meet the delivery rules.</p>
+              )}
+              {candidatesFound === 0 && (
+                <p className="mt-1 text-[color:var(--ink-2)]">Edit this query to broaden the search.</p>
+              )}
             </div>
           )}
 

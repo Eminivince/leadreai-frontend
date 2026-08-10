@@ -57,7 +57,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
    <div className="flex flex-1 min-h-0 w-full">
    <Sidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
    <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
-    <div className="shrink-0 bg-[color:var(--paper)]/95 backdrop-blur-sm border-b border-[color:var(--rule)]">
+    <div className="relative z-50 shrink-0 bg-[color:var(--paper)]/95 backdrop-blur-sm border-b border-[color:var(--rule)]">
      <Topbar onOpenMobileSidebar={() => setMobileOpen(true)} />
     </div>
     <div className="flex-1 relative bg-[color:var(--paper-2)] min-w-0 overflow-y-auto overflow-x-hidden">{children}</div>

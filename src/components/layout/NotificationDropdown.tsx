@@ -104,7 +104,7 @@ export function NotificationDropdown() {
    </button>
 
    {open && (
-    <div className="absolute top-full right-0 mt-2 z-30 w-[380px] max-w-[calc(100vw-2rem)] bg-[color:var(--paper)] border border-[color:var(--rule)] rounded-sm shadow-xl">
+    <div className="fixed inset-x-2 top-16 z-[60] max-h-[calc(100dvh-5rem)] overflow-hidden bg-[color:var(--paper)] border border-[color:var(--rule)] rounded-sm shadow-xl md:absolute md:inset-x-auto md:top-full md:right-0 md:mt-2 md:w-[380px] md:max-h-none">
      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[color:var(--rule)]">
       <div>
        <div className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-[color:var(--ink-3)]">
@@ -124,7 +124,7 @@ export function NotificationDropdown() {
       )}
      </div>
 
-     <div className="max-h-[420px] overflow-y-auto">
+     <div className="max-h-[calc(100dvh-11rem)] overflow-y-auto md:max-h-[420px]">
       {items.length === 0 ? (
        <div className="px-4 py-10 text-center">
         <span className="font-mono text-[9.5px] tracking-[0.22em] uppercase text-[color:var(--ink-3)]">

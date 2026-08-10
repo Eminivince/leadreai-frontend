@@ -1193,7 +1193,15 @@ function ActiveDispatch({ job: originalJob }: { job: ProspectingJob }) {
   const pct = job.progress?.percentage ?? 0;
   const stage = job.progress?.currentStage ?? 'pending';
   const found = job.progress?.leadsFoundSoFar ?? 0;
-  const target = job.parsedIntent?.targetCount ?? '—';
+  const targetCount = job.parsedIntent?.targetCount;
+  const target = targetCount ?? '—';
+  const deliveredCount = job.result?.totalLeadsFound ?? 0;
+  const candidatesFound = job.result?.candidatesFound ?? deliveredCount;
+  const droppedUnverified = job.result?.droppedUnverified ?? 0;
+  const droppedNoContact = job.result?.droppedNoContact ?? 0;
+  const showDeliveryShortfall = job.status === 'complete'
+    && typeof targetCount === 'number'
+    && deliveredCount < targetCount;
   const schema = job.parsedIntent?.outputSchema ?? [];
   const dossierId = job._id.slice(-4).toUpperCase();
   const isLive = job.status !== 'complete' && job.status !== 'failed' && job.status !== 'cancelled';
@@ -1263,10 +1271,21 @@ function ActiveDispatch({ job: originalJob }: { job: ProspectingJob }) {
             </div>
           )}
 
-          {job.status === 'complete' && (job.result?.totalLeadsFound ?? 0) === 0 && (
+          {showDeliveryShortfall && (
             <div className="mt-4 border border-[color:var(--rule)] bg-[color:var(--paper-2)]/60 px-3 py-2.5 text-[13px] leading-[1.45] text-[color:var(--ink)]">
-              <p className="font-medium">No matching leads found.</p>
-              <p className="mt-1 text-[color:var(--ink-2)]">Edit this query to broaden the industry, location, or contact criteria.</p>
+              <p className="font-medium">Delivered {deliveredCount} of {targetCount} requested leads.</p>
+              {droppedUnverified > 0 && (
+                <p className="mt-1 text-[color:var(--ink-2)]">{droppedUnverified} candidate{droppedUnverified === 1 ? '' : 's'} had no verified email.</p>
+              )}
+              {droppedNoContact > 0 && (
+                <p className="mt-1 text-[color:var(--ink-2)]">{droppedNoContact} candidate{droppedNoContact === 1 ? '' : 's'} had no usable email or phone.</p>
+              )}
+              {droppedUnverified === 0 && droppedNoContact === 0 && candidatesFound > deliveredCount && (
+                <p className="mt-1 text-[color:var(--ink-2)]">Some candidates did not meet the delivery rules.</p>
+              )}
+              {candidatesFound === 0 && (
+                <p className="mt-1 text-[color:var(--ink-2)]">Edit this query to broaden the industry, location, or contact criteria.</p>
+              )}
             </div>
           )}
 
@@ -1282,12 +1301,12 @@ function ActiveDispatch({ job: originalJob }: { job: ProspectingJob }) {
             </div>
             <div>
               <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-[color:var(--ink-3)]">
-                Leads
+                {isLive ? 'Candidates' : 'Delivered'}
               </span>
               <div className="mt-1 font-mono text-[26px] leading-none tabular-nums text-[color:var(--ink)]">
-                {found}
+                {isLive ? found : deliveredCount}
                 <span className="text-[12px] text-[color:var(--ink-3)] ml-1">
-                  / {target}
+                  {isLive ? `checked for ${target}` : `/ ${target}`}
                 </span>
               </div>
             </div>

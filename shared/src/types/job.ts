@@ -61,6 +61,14 @@ export interface JobProgress {
 export interface JobResult {
   totalLeadsFound: number;
   totalAfterDedup: number;
+  /** Candidates found before delivery quality checks. */
+  candidatesFound?: number;
+  /** Candidates removed because they had no verified email in strict mode. */
+  droppedUnverified?: number;
+  /** Candidates removed because they had no usable email or phone. */
+  droppedNoContact?: number;
+  /** Candidates removed because the result exceeded the requested count. */
+  trimmedToTarget?: number;
   dorkQueriesUsed: string[];
   sourcesScraped: string[];
   filesDownloaded: number;
